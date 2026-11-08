@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Household Budget</title>
+<meta name="theme-color" content="#14532d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f4f5f2;--card:#fff;--ink:#1c1f1a;--mute:#6b7166;--line:#e3e6df;--brand:#14532d;--brand2:#1f7a45;--ok:#1f7a45;--warn:#c98a00;--bad:#c0392b;--chip:#eef1ea;--r:14px}
+@media (prefers-color-scheme:dark){:root{--bg:#111410;--card:#1b1f1a;--ink:#eef1ea;--mute:#9aa294;--line:#2b3129;--chip:#242a22}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
+header .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+header h1{font-size:17px;margin:0;font-weight:650}
+.mnav{display:flex;align-items:center;gap:6px}
+.mnav button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:10px;padding:6px 11px;font-size:16px}
+.mnav span{min-width:118px;text-align:center;font-weight:600}
+main{padding:12px 12px calc(90px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px}
+.stat .l{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff6dc;border:1px solid #f1d68a;color:#5a4300;border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-weight:600}
+@media (prefers-color-scheme:dark){.banner{background:#3a3115;border-color:#6b5a1f;color:#f6dc8c}}
+.grp{margin-bottom:12px}
+.grp h3{display:flex;justify-content:space-between;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:16px 4px 6px;font-weight:650}
+.cat{padding:10px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.cat:last-child{border-bottom:0}
+.cat .top{display:flex;justify-content:space-between;gap:10px}
+.cat .nm{font-weight:550}
+.cat .amt{font-variant-numeric:tabular-nums;white-space:nowrap}
+.cat .sub{font-size:12px;color:var(--mute);display:flex;justify-content:space-between;margin-top:3px}
+.bar{height:6px;background:var(--chip);border-radius:6px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:6px}
+.bar i.w{background:var(--warn)}.bar i.o{background:var(--bad)}
+.tx{display:flex;justify-content:space-between;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.tx:last-child{border-bottom:0}
+.tx .m{font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx .s{font-size:12px;color:var(--mute)}
+.tx .a{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;text-align:right}
+.day{font-size:12px;color:var(--mute);margin:14px 4px 4px;font-weight:650;text-transform:uppercase;letter-spacing:.04em}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--chip);color:var(--mute);margin-left:4px;vertical-align:1px}
+.tag.rev{background:#fff0c2;color:#7a5a00}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;border:0;background:none;padding:10px 0 9px;font-size:12px;color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button b{font-size:19px;line-height:1}
+nav.tabs button.on{color:var(--brand2);font-weight:650}
+.fab{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:7;width:56px;height:56px;border-radius:50%;border:0;background:var(--brand2);color:#fff;font-size:30px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.btn{border:0;border-radius:11px;padding:11px 16px;background:var(--brand2);color:#fff;font-weight:650}
+.btn.sec{background:var(--chip);color:var(--ink)}.btn.del{background:none;color:var(--bad)}
+.btn.sm{padding:7px 12px;font-size:14px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--mute);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);font-size:16px}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.sheet h2{margin:0 0 14px;font-size:18px}
+.actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:8px}
+.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--card);margin-bottom:8px;font-size:16px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font-size:13px}
+.brow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.brow:last-child{border-bottom:0}
+.brow input{width:110px;text-align:right;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-variant-numeric:tabular-nums;font-size:16px}
+.muted{color:var(--mute)}.small{font-size:13px}
+.empty{text-align:center;color:var(--mute);padding:26px 10px}
+.login{max-width:380px;margin:12vh auto 0;padding:0 16px}
+.login h1{font-size:24px;margin:0 0 4px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom));background:#222;color:#fff;padding:10px 16px;border-radius:12px;z-index:30;font-size:14px;max-width:90vw}
+.hidden{display:none!important}
+.link{background:none;border:0;color:var(--brand2);font-weight:600;padding:0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ---- config ----
+const SUPABASE_URL = 'https://jbgwvmacuyxubbjglldb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_zjxBSLNLwxkc3szZU4opHg_37jpOvVk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ---- state ----
+const S = { session:null, tab:'overview', month: ym(new Date()), groups:[], cats:[], income:[], rules:[], txns:[], review:[], planned:[], filterCat:null, search:'', showAll:false };
+
+// ---- helpers ----
+function ym(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function monthRange(m){const [y,mo]=m.split('-').map(Number);const end=new Date(y,mo,0).getDate();return [m+'-01', m+'-'+String(end).padStart(2,'0')]}
+function monthLabel(m){if(m==='ALL')return 'All time';const [y,mo]=m.split('-').map(Number);return new Date(y,mo-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'})}
+function shiftMonth(m,n){const [y,mo]=m.split('-').map(Number);return ym(new Date(y,mo-1+n,1))}
+const fmt=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+function $(n){return fmt.format(Number(n)||0)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function cents(n){return Math.round(Number(n)*100)}
+function sum(a,f){return a.reduce((t,x)=>t+cents(f(x)),0)/100}
+function catName(id){const c=S.cats.find(c=>c.id===id);return c?c.name:'Uncategorized'}
+function dayLabel(d){const [y,m,dd]=d.split('-').map(Number);return new Date(y,m-1,dd).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
+function catOptions(sel){return S.groups.map(g=>`<optgroup label="${esc(g.name)}">`+S.cats.filter(c=>c.group_id===g.id&&(c.active||c.id===sel)).map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('')+'</optgroup>').join('')}
+function suggestPattern(m){return String(m||'').toUpperCase().replace(/^(SQ \*|TST\* |TST\*|SP |PAYPAL \*|POS )/,'').replace(/[#*].*$/,'').replace(/\d{3,}.*$/,'').replace(/\s+/g,' ').trim().slice(0,30)}
+async function q(p){const {data,error}=await p;if(error){toast(error.message);throw error}return data}
+
+// ---- data ----
+async function loadMeta(){
+  [S.groups,S.cats,S.income,S.rules]=await Promise.all([
+    q(sb.from('category_groups').select('*').order('sort')),
+    q(sb.from('categories').select('*').order('sort')),
+    q(sb.from('income_lines').select('*').order('sort')),
+    q(sb.from('merchant_rules').select('*'))]);
+}
+async function loadData(){
+  let tq=sb.from('transactions').select('*').order('txn_date',{ascending:false}).order('created_at',{ascending:false});
+  if(S.month!=='ALL'){const [a,b]=monthRange(S.month);tq=tq.gte('txn_date',a).lte('txn_date',b)}
+  [S.txns,S.review,S.planned]=await Promise.all([
+    q(tq.limit(5000)),
+    q(sb.from('transactions').select('*').eq('needs_review',true).order('txn_date',{ascending:false})),
+    q(sb.from('planned_expenses').select('*').order('due_date',{ascending:true,nullsFirst:false}))]);
+  render();
+}
+let rt;
+function subscribe(){
+  if(rt)return;
+  let timer;const again=()=>{clearTimeout(timer);timer=setTimeout(loadData,400)};
+  rt=sb.channel('live').on('postgres_changes',{event:'*',schema:'public',table:'transactions'},again)
+    .on('postgres_changes',{event:'*',schema:'public',table:'planned_expenses'},again).subscribe();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadData()});
+}
+
+// ---- render ----
+function render(){
+  const app=document.getElementById('app');
+  if(!S.session){app.innerHTML=loginView();return}
+  app.innerHTML=`
+  <header><div class="row"><h1>Household Budget</h1>
+   <div class="mnav"><button onclick="go(-1)">‹</button><span onclick="pickMonth()">${monthLabel(S.month)}</span><button onclick="go(1)">›</button></div></div></header>
+  <main>${S.tab==='overview'?overview():S.tab==='activity'?activity():S.tab==='upcoming'?upcoming():budgetView()}</main>
+  <button class="fab" onclick="editTxn()" aria-label="Add expense">+</button>
+  <nav class="tabs">${[['overview','◔','Overview'],['activity','≡','Activity'],['upcoming','◷','Upcoming'],['budget','✎','Budget']].map(([k,i,l])=>`<button class="${S.tab===k?'on':''}" onclick="setTab('${k}')"><b>${i}</b>${l}</button>`).join('')}</nav>`;
+}
+function setTab(t){S.tab=t;if(t!=='activity')S.filterCat=null;render();window.scrollTo(0,0)}
+function go(n){S.month=S.month==='ALL'?ym(new Date()):shiftMonth(S.month,n);loadData()}
+function pickMonth(){S.month=S.month==='ALL'?ym(new Date()):'ALL';loadData()}
+
+function totals(){
+  const income=sum(S.income,x=>x.amount);
+  const budget=sum(S.cats.filter(c=>c.active),c=>c.budget);
+  const spent=sum(S.txns,t=>t.amount);
+  return {income,budget,spent,left:(cents(income)-cents(spent))/100,remain:(cents(budget)-cents(spent))/100};
+}
+function overview(){
+  const t=totals();const all=S.month==='ALL';
+  const by={};S.txns.forEach(x=>{const k=x.category_id??0;by[k]=(by[k]||0)+cents(x.amount)});
+  const rv=S.review.length?`<div class="banner" onclick="showReview()"><span>${S.review.length} charge${S.review.length>1?'s':''} to review</span><span>›</span></div>`:'';
+  let due='';
+  if(!all){const [a,b]=monthRange(S.month);const p=S.planned.filter(x=>!x.paid&&x.due_date&&x.due_date>=a&&x.due_date<=b);
+    if(p.length)due=`<div class="card small" onclick="setTab('upcoming')" style="cursor:pointer"><b>${p.length} one-time expense${p.length>1?'s':''}</b> due this month · ${$(sum(p,x=>x.amount))} <span class="muted">›</span></div>`}
+  const groups=S.groups.map(g=>{
+    const cs=S.cats.filter(c=>c.group_id===g.id&&(S.showAll||c.budget>0||by[c.id]));
+    if(!cs.length)return '';
+    const gs=cs.reduce((n,c)=>n+(by[c.id]||0),0)/100, gb=sum(cs,c=>c.budget);
+    return `<div class="grp"><h3><span>${esc(g.name)}</span><span>${$(gs)}${all?'':' / '+$(gb)}</span></h3><div class="card" style="padding:4px 12px">`+
+    cs.map(c=>{const sp=(by[c.id]||0)/100;const b=Number(c.budget);const pct=b>0?Math.min(100,sp/b*100):(sp>0?100:0);
+      const cls=b>0&&sp>b?'o':(b>0&&sp>=b*.85?'w':(b===0&&sp>0?'w':''));const diff=(cents(b)-cents(sp))/100;
+      return `<div class="cat" onclick="openCat(${c.id})"><div class="top"><span class="nm">${esc(c.name)}</span><span class="amt">${$(sp)}${all?'':' <span class="muted">/ '+$(b)+'</span>'}</span></div>
+      ${all?'':`<div class="bar"><i class="${cls}" style="width:${pct}%"></i></div><div class="sub"><span></span><span class="${diff<0?'neg':''}">${diff<0?$(-diff)+' over':$(diff)+' left'}</span></div>`}</div>`}).join('')+'</div></div>';
+  }).join('');
+  const unc=by[0]?`<div class="card small" onclick="openCat(0)" style="cursor:pointer">Uncategorized: <b>${$(by[0]/100)}</b> ›</div>`:'';
+  return rv+`<div class="grid4" style="margin-bottom:12px">
+    <div class="stat"><div class="l">Spent</div><div class="v">${$(t.spent)}</div></div>
+    <div class="stat"><div class="l">${all?'Transactions':'Budget left'}</div><div class="v ${!all&&t.remain<0?'neg':''}">${all?S.txns.length:$(t.remain)}</div></div>
+    <div class="stat"><div class="l">Income</div><div class="v">${$(t.income)}</div></div>
+    <div class="stat"><div class="l">Leftover</div><div class="v ${t.left<0?'neg':'pos'}">${all?'—':$(t.left)}</div></div></div>`+
+    (all?'':`<div class="small muted" style="margin:-4px 4px 12px">Budgeted ${$(t.budget)} · Leftover = income − spent</div>`)+due+unc+groups+
+    `<div style="text-align:center;margin:10px"><button class="link" onclick="S.showAll=!S.showAll;render()">${S.showAll?'Hide empty categories':'Show all categories'}</button></div>`;
+}
+function openCat(id){S.filterCat=id;S.tab='activity';render();window.scrollTo(0,0)}
+function txRow(x){
+  const src={chase:'Chase',wellsfargo:'Wells Fargo',manual:'',import:''}[x.source]??'';
+  return `<div class="tx" onclick="editTxn('${x.id}')"><div style="min-width:0"><div class="m">${esc(x.merchant||'(no description)')}${x.needs_review?'<span class="tag rev">review</span>':''}</div>
+  <div class="s">${esc(catName(x.category_id))}${src?' · '+src:''}${x.notes?' · '+esc(x.notes):''}</div></div><div class="a">${$(x.amount)}</div></div>`;
+}
+function activity(){
+  let list=S.txns;
+  if(S.filterCat!==null)list=list.filter(x=>(x.category_id??0)===S.filterCat);
+  if(S.search){const s=S.search.toLowerCase();list=list.filter(x=>(x.merchant||'').toLowerCase().includes(s)||(x.notes||'').toLowerCase().includes(s)||catName(x.category_id).toLowerCase().includes(s))}
+  const chip=S.filterCat!==null?`<div class="chips"><span class="chip">${esc(S.filterCat===0?'Uncategorized':catName(S.filterCat))} · ${$(sum(list,x=>x.amount))} <button class="link" onclick="S.filterCat=null;render()">✕</button></span></div>`:'';
+  let html='',last='';
+  list.forEach(x=>{if(x.txn_date!==last){if(last)html+='</div>';html+=`<div class="day">${dayLabel(x.txn_date)}</div><div class="card" style="padding:2px 12px">`;last=x.txn_date}html+=txRow(x)});
+  if(last)html+='</div>';
+  return `<input class="search" placeholder="Search merchant, note, category" value="${esc(S.search)}" oninput="S.search=this.value;clearTimeout(window._st);window._st=setTimeout(()=>{render();const i=document.querySelector('.search');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)">`+chip+(html||'<div class="empty">No expenses yet</div>');
+}
+function upcoming(){
+  const open=S.planned.filter(x=>!x.paid),done=S.planned.filter(x=>x.paid);
+  const row=x=>`<div class="tx" onclick="editPlanned('${x.id}')"><div style="min-width:0"><div class="m">${esc(x.name)}</div><div class="s">${x.due_date?'Due '+dayLabel(x.due_date):'No due date'}${x.category_id?' · '+esc(catName(x.category_id)):''}</div></div>
+   <div class="a">${$(x.amount)}${x.paid?'<div class="s">paid</div>':`<div><button class="btn sm sec" style="margin-top:4px" onclick="event.stopPropagation();markPaid('${x.id}')">Mark paid</button></div>`}</div></div>`;
+  return `<div class="grid4" style="margin-bottom:12px"><div class="stat"><div class="l">Still to pay</div><div class="v">${$(sum(open,x=>x.amount))}</div></div><div class="stat"><div class="l">Items</div><div class="v">${open.length}</div></div></div>
+  <div class="actions" style="margin:0 2px 10px"><span class="small muted">One-time expenses you know are coming</span><button class="btn sm" onclick="editPlanned()">+ Add</button></div>
+  <div class="card" style="padding:2px 12px">${open.map(row).join('')||'<div class="empty">Nothing planned</div>'}</div>`+
+  (done.length?`<div class="day">Paid</div><div class="card" style="padding:2px 12px">${done.map(row).join('')}</div>`:'');
+}
+function budgetView(){
+  const t=totals();
+  return `<div class="grid4" style="margin-bottom:12px"><div class="stat"><div class="l">Monthly income</div><div class="v">${$(t.income)}</div></div><div class="stat"><div class="l">Budgeted</div><div class="v">${$(t.budget)}</div></div></div>
+  <div class="small muted" style="margin:-4px 4px 12px">Unbudgeted: <b class="${t.income-t.budget<0?'neg':''}">${$((cents(t.income)-cents(t.budget))/100)}</b> · Changes save automatically and apply to every month</div>
+  <div class="grp"><h3><span>Income</span></h3><div class="card" style="padding:4px 12px">${S.income.map(i=>`<div class="brow"><span>${esc(i.name)}</span><input inputmode="decimal" value="${Number(i.amount).toFixed(2)}" onchange="saveIncome(${i.id},this.value)"></div>`).join('')}</div></div>`+
+  S.groups.map(g=>{const cs=S.cats.filter(c=>c.group_id===g.id&&c.active);
+    return `<div class="grp"><h3><span>${esc(g.name)}</span><span>${$(sum(cs,c=>c.budget))}</span></h3><div class="card" style="padding:4px 12px">`+
+    cs.map(c=>`<div class="brow"><span onclick="editCat(${c.id})" style="cursor:pointer">${esc(c.name)}</span><input inputmode="decimal" value="${Number(c.budget).toFixed(2)}" onchange="saveBudget(${c.id},this.value)"></div>`).join('')+
+    `<div class="brow"><button class="link" onclick="addCat(${g.id})">+ Add category</button></div></div></div>`}).join('')+
+  `<div style="text-align:center;margin:18px"><button class="btn sec sm" onclick="signOut()">Sign out (${esc(S.session.user.email)})</button></div>`;
+}
+function parseMoney(v){const n=Number(String(v).replace(/[$,\s]/g,''));return isFinite(n)?Math.round(n*100)/100:NaN}
+async function saveBudget(id,v){const n=parseMoney(v);if(isNaN(n)||n<0)return toast('Enter a valid amount');await q(sb.from('categories').update({budget:n}).eq('id',id));S.cats.find(c=>c.id===id).budget=n;render();toast('Budget saved')}
+async function saveIncome(id,v){const n=parseMoney(v);if(isNaN(n)||n<0)return toast('Enter a valid amount');await q(sb.from('income_lines').update({amount:n}).eq('id',id));S.income.find(c=>c.id===id).amount=n;render();toast('Income saved')}
+function addCat(gid){sheet(`<h2>New category</h2><div class="field"><label>Name</label><input id="cn"></div><div class="field"><label>Monthly budget</label><input id="cb" inputmode="decimal" value="0"></div>
+  <div class="actions"><button class="btn sec" onclick="closeSheet()">Cancel</button><button class="btn" onclick="doAddCat(${gid})">Add</button></div>`)}
+async function doAddCat(gid){const n=document.getElementById('cn').value.trim(),b=parseMoney(document.getElementById('cb').value);if(!n)return;
+  await q(sb.from('categories').insert({group_id:gid,name:n,budget:isNaN(b)?0:b,sort:999}));closeSheet();await loadMeta();render()}
+function editCat(id){const c=S.cats.find(c=>c.id===id);sheet(`<h2>${esc(c.name)}</h2><div class="field"><label>Name</label><input id="cn" value="${esc(c.name)}"></div>
+  <div class="actions"><button class="btn del" onclick="hideCat(${id})">Hide category</button><span><button class="btn sec" onclick="closeSheet()">Cancel</button> <button class="btn" onclick="renameCat(${id})">Save</button></span></div>
+  <p class="small muted">Hiding removes it from the budget and pickers. Past expenses keep it.</p>`)}
+async function renameCat(id){const n=document.getElementById('cn').value.trim();if(!n)return;await q(sb.from('categories').update({name:n}).eq('id',id));closeSheet();await loadMeta();render()}
+async function hideCat(id){if(!await ask('Hide this category? Its budget stops counting. You can ask Claude to bring it back.'))return;await q(sb.from('categories').update({active:false}).eq('id',id));closeSheet();await loadMeta();render()}
+
+// ---- sheets ----
+function sheet(html){closeSheet();const d=document.createElement('div');d.className='sheet-bg';d.id='sheet';d.innerHTML=`<div class="sheet">${html}</div>`;d.addEventListener('click',e=>{if(e.target===d)closeSheet()});document.body.appendChild(d)}
+function closeSheet(){document.getElementById('sheet')?.remove()}
+function ask(msg,yes='Yes',no='Cancel'){return new Promise(r=>{sheet(`<p style="font-size:16px;margin:4px 0 16px">${msg}</p><div class="actions"><button class="btn sec" id="an">${no}</button><button class="btn" id="ay">${yes}</button></div>`);
+  document.getElementById('an').onclick=()=>{closeSheet();r(false)};document.getElementById('ay').onclick=()=>{closeSheet();r(true)}})}
+
+function findTxn(id){return S.txns.find(x=>x.id===id)||S.review.find(x=>x.id===id)}
+function editTxn(id){
+  const x=id?findTxn(id):{txn_date:today(),amount:'',merchant:'',notes:'',category_id:null,source:'manual'};
+  const src=x.source==='chase'?'From Chase alert':x.source==='wellsfargo'?'From Wells Fargo alert':'';
+  sheet(`<h2>${id?'Edit expense':'Add expense'}</h2>${src?`<p class="small muted" style="margin-top:-8px">${src}${x.account?' · '+esc(x.account):''}</p>`:''}
+  <div class="field"><label>Amount</label><input id="fa" inputmode="decimal" placeholder="0.00" value="${x.amount!==''?Number(x.amount).toFixed(2):''}"></div>
+  <div class="field"><label>Description / merchant</label><input id="fm" value="${esc(x.merchant||'')}"></div>
+  <div class="field"><label>Category</label><select id="fc"><option value="">Choose…</option>${catOptions(x.category_id)}</select></div>
+  <div class="field"><label>Date</label><input id="fd" type="date" value="${x.txn_date}"></div>
+  <div class="field"><label>Notes</label><input id="fn" value="${esc(x.notes||'')}"></div>
+  <div class="actions">${id?`<button class="btn del" onclick="delTxn('${id}')">Delete</button>`:'<span></span>'}<span><button class="btn sec" onclick="closeSheet()">Cancel</button> <button class="btn" onclick="saveTxn(${id?`'${id}'`:'null'})">Save</button></span></div>`);
+  if(!id)setTimeout(()=>document.getElementById('fa').focus(),50);
+}
+async function saveTxn(id){
+  const amount=parseMoney(document.getElementById('fa').value),cat=Number(document.getElementById('fc').value)||null;
+  const row={amount,merchant:document.getElementById('fm').value.trim()||null,category_id:cat,txn_date:document.getElementById('fd').value,notes:document.getElementById('fn').value.trim()||null};
+  if(isNaN(amount))return toast('Enter an amount');if(!row.txn_date)return toast('Pick a date');if(!cat)return toast('Pick a category');
+  const before=id?findTxn(id):null;
+  if(id){row.needs_review=false;await q(sb.from('transactions').update(row).eq('id',id))}else{row.source='manual';await q(sb.from('transactions').insert(row))}
+  closeSheet();
+  if(before&&before.merchant&&(before.source==='chase'||before.source==='wellsfargo')&&(before.category_id!==cat||before.needs_review))await offerRule(before.merchant,cat);
+  await loadData();toast('Saved');
+}
+async function offerRule(merchant,cat){
+  const pat=suggestPattern(merchant);if(!pat)return;
+  const existing=S.rules.find(r=>r.pattern===pat);if(existing&&existing.category_id===cat&&!existing.ask)return;
+  if(!await ask(`Always put <b>${esc(pat)}</b> charges in <b>${esc(catName(cat))}</b>?`,'Always','Just this once'))return;
+  await q(sb.from('merchant_rules').upsert({pattern:pat,category_id:cat,ask:false},{onConflict:'pattern'}));
+  const same=S.review.filter(r=>(r.merchant||'').toUpperCase().includes(pat));
+  for(const r of same)await q(sb.from('transactions').update({category_id:cat,needs_review:false}).eq('id',r.id));
+  S.rules=await q(sb.from('merchant_rules').select('*'));
+}
+async function delTxn(id){if(!await ask('Delete this expense? This can’t be undone.','Delete'))return;await q(sb.from('transactions').delete().eq('id',id));await loadData();toast('Deleted')}
+function showReview(){
+  sheet(`<h2>Review charges</h2><p class="small muted" style="margin-top:-8px">Confirm or pick the right category. New merchants get remembered.</p>`+
+  S.review.map(x=>`<div class="card" style="padding:12px"><div class="top" style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.merchant)}</b><b>${$(x.amount)}</b></div>
+   <div class="small muted">${dayLabel(x.txn_date)}${x.account?' · '+esc(x.account):''}</div>
+   <div style="display:flex;gap:8px;margin-top:8px"><select id="rv_${x.id}" style="flex:1;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px"><option value="">Choose…</option>${catOptions(x.category_id)}</select><button class="btn sm" onclick="confirmReview('${x.id}')">OK</button></div></div>`).join('')+
+  `<div class="actions"><span></span><button class="btn sec" onclick="closeSheet()">Done</button></div>`);
+}
+async function confirmReview(id){
+  const x=S.review.find(r=>r.id===id),cat=Number(document.getElementById('rv_'+id).value)||null;if(!cat)return toast('Pick a category');
+  await q(sb.from('transactions').update({category_id:cat,needs_review:false}).eq('id',id));
+  closeSheet();if(x.merchant)await offerRule(x.merchant,cat);await loadData();if(S.review.length)showReview();
+}
+function editPlanned(id){
+  const x=id?S.planned.find(p=>p.id===id):{name:'',amount:'',due_date:'',category_id:null,notes:''};
+  sheet(`<h2>${id?'Edit':'Add'} one-time expense</h2>
+  <div class="field"><label>What</label><input id="pn" value="${esc(x.name)}" placeholder="e.g. Convention Comp"></div>
+  <div class="field"><label>Amount</label><input id="pa" inputmode="decimal" value="${x.amount!==''?Number(x.amount).toFixed(2):''}"></div>
+  <div class="field"><label>Due date</label><input id="pd" type="date" value="${x.due_date||''}"></div>
+  <div class="field"><label>Category (optional)</label><select id="pc"><option value="">—</option>${catOptions(x.category_id)}</select></div>
+  <div class="field"><label>Notes</label><input id="pt" value="${esc(x.notes||'')}"></div>
+  <div class="actions">${id?`<button class="btn del" onclick="delPlanned('${id}')">Delete</button>`:'<span></span>'}<span><button class="btn sec" onclick="closeSheet()">Cancel</button> <button class="btn" onclick="savePlanned(${id?`'${id}'`:'null'})">Save</button></span></div>`);
+}
+async function savePlanned(id){
+  const row={name:document.getElementById('pn').value.trim(),amount:parseMoney(document.getElementById('pa').value),due_date:document.getElementById('pd').value||null,category_id:Number(document.getElementById('pc').value)||null,notes:document.getElementById('pt').value.trim()||null};
+  if(!row.name)return toast('Add a name');if(isNaN(row.amount))return toast('Enter an amount');
+  if(id)await q(sb.from('planned_expenses').update(row).eq('id',id));else await q(sb.from('planned_expenses').insert(row));
+  closeSheet();await loadData();
+}
+async function delPlanned(id){if(!await ask('Delete this one-time expense?','Delete'))return;await q(sb.from('planned_expenses').delete().eq('id',id));await loadData()}
+async function markPaid(id){
+  const p=S.planned.find(x=>x.id===id);
+  const add=await ask(`Mark <b>${esc(p.name)}</b> paid.<br><br>Add ${$(p.amount)} as an expense today? Choose <b>No</b> if the card alert will bring it in.`,'Add expense','No, just mark paid');
+  if(add){if(!p.category_id){toast('Pick a category first');return editPlanned(id)}
+    await q(sb.from('transactions').insert({txn_date:today(),amount:p.amount,category_id:p.category_id,merchant:p.name,notes:p.notes,source:'manual'}))}
+  await q(sb.from('planned_expenses').update({paid:true}).eq('id',id));await loadData();toast('Marked paid');
+}
+
+// ---- auth ----
+function loginView(){return `<div class="login"><h1>Household Budget</h1><p class="muted" style="margin-top:0">Javier &amp; Mariah</p>
+  <div class="field"><label>Email</label><input id="le" type="email" autocomplete="email"></div>
+  <div class="field"><label>Password</label><input id="lp" type="password" autocomplete="current-password"></div>
+  <button class="btn" style="width:100%" onclick="signIn()">Sign in</button>
+  <p class="small muted" style="text-align:center">First time? <button class="link" onclick="signUp()">Create your login</button> · <button class="link" onclick="forgot()">Forgot password</button></p></div>`}
+async function signIn(){const {error}=await sb.auth.signInWithPassword({email:document.getElementById('le').value.trim(),password:document.getElementById('lp').value});if(error)toast(error.message)}
+async function signUp(){if(document.getElementById('lp').value.length<8)return toast('Use at least 8 characters');const {data,error}=await sb.auth.signUp({email:document.getElementById('le').value.trim(),password:document.getElementById('lp').value,options:{emailRedirectTo:location.origin+location.pathname}});
+  if(error)return toast(/restricted|Database error/i.test(error.message)?'This app is only for Javier and Mariah’s emails':error.message);if(!data.session)toast('Check your email to confirm, then sign in')}
+async function forgot(){const e=document.getElementById('le').value.trim();if(!e)return toast('Enter your email first');await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});toast('Reset link sent')}
+async function signOut(){await sb.auth.signOut()}
+async function start(session){
+  S.session=session;
+  if(!session){render();return}
+  try{await loadMeta();await loadData();subscribe()}catch(e){console.error(e)}
+}
+sb.auth.onAuthStateChange((ev,session)=>{
+  // defer: supabase calls inside this callback can deadlock
+  setTimeout(async()=>{
+    if(ev==='PASSWORD_RECOVERY'){const p=prompt('New password (8+ characters)');if(p&&p.length>=8){const {error}=await sb.auth.updateUser({password:p});toast(error?error.message:'Password updated')}}
+    if(ev==='TOKEN_REFRESHED'||(ev==='SIGNED_IN'&&S.session)){S.session=session;return}
+    start(session);
+  },0);
+});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
