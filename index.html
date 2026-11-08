@@ -88,6 +88,7 @@ nav.tabs button.on{color:var(--brand2);font-weight:650}
 // ---- config ----
 const SUPABASE_URL = 'https://jbgwvmacuyxubbjglldb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_zjxBSLNLwxkc3szZU4opHg_37jpOvVk';
+const NEEDS_PW = /type=(invite|recovery)/.test(location.hash);
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ---- state ----
@@ -320,15 +321,18 @@ async function signUp(){if(document.getElementById('lp').value.length<8)return t
   if(error)return toast(/restricted|Database error/i.test(error.message)?'This app is only for Javier and Mariah’s emails':error.message);if(!data.session){const n=document.getElementById('su');if(n)n.remove();document.querySelector('.login').insertAdjacentHTML('beforeend','<div id="su" class="card" style="margin-top:14px"><b>Almost done.</b> We emailed a confirmation link to '+esc(document.getElementById('le').value.trim())+' (check spam too). Tap it, then come back here and sign in.</div>')}}
 async function forgot(){const e=document.getElementById('le').value.trim();if(!e)return toast('Enter your email first');await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});toast('Reset link sent')}
 async function signOut(){await sb.auth.signOut()}
+function setPassword(){sheet(`<h2>Set your password</h2><p class="small muted" style="margin-top:-8px">You'll use this with your email to sign in.</p><div class="field"><label>New password (8+ characters)</label><input id="np" type="password" autocomplete="new-password"></div><div class="actions"><span></span><button class="btn" onclick="savePassword()">Save password</button></div>`)}
+async function savePassword(){const p=document.getElementById('np').value;if(p.length<8)return toast('Use at least 8 characters');const {error}=await sb.auth.updateUser({password:p});if(error)return toast(error.message);closeSheet();toast('Password saved')}
 async function start(session){
   S.session=session;
   if(!session){render();return}
+  if(NEEDS_PW&&!window._pwDone){window._pwDone=true;setPassword()}
   try{await loadMeta();await loadData();subscribe()}catch(e){console.error(e)}
 }
 sb.auth.onAuthStateChange((ev,session)=>{
   // defer: supabase calls inside this callback can deadlock
   setTimeout(async()=>{
-    if(ev==='PASSWORD_RECOVERY'){const p=prompt('New password (8+ characters)');if(p&&p.length>=8){const {error}=await sb.auth.updateUser({password:p});toast(error?error.message:'Password updated')}}
+    if(ev==='PASSWORD_RECOVERY'&&!window._pwDone){window._pwDone=true;setPassword()}
     if(ev==='TOKEN_REFRESHED'||(ev==='SIGNED_IN'&&S.session)){S.session=session;return}
     start(session);
   },0);
