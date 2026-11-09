@@ -89,6 +89,14 @@ nav.tabs button.on{color:var(--brand2);font-weight:650}
 const SUPABASE_URL = 'https://jbgwvmacuyxubbjglldb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_zjxBSLNLwxkc3szZU4opHg_37jpOvVk';
 const NEEDS_PW = /type=(invite|recovery)/.test(location.hash);
+let VAPID_PUBLIC = null;
+function b64u(s){const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0))}
+function pushReady(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window}
+async function savePushSub(){const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(!sub){if(!VAPID_PUBLIC)VAPID_PUBLIC=await q(sb.rpc('get_vapid_public'));if(!VAPID_PUBLIC)throw new Error('push not ready');sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID_PUBLIC)})}const j=sub.toJSON();await q(sb.rpc('save_push_sub',{p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth}))}
+async function enablePush(){try{const p=await Notification.requestPermission();if(p!=='granted'){render();return toast('Notifications were not allowed')}await savePushSub();render();toast('Notifications are on')}catch(e){console.error(e);toast('Could not turn on notifications')}}
+function notifCard(){if(!pushReady()||Notification.permission!=='default')return '';return `<div class="banner" style="background:var(--card);border-color:var(--line);color:var(--ink)"><span>Get a notification and red badge for new charges</span><button class="btn sm" onclick="enablePush()">Turn on</button></div>`}
+async function markSeen(){try{if(navigator.clearAppBadge)navigator.clearAppBadge().catch(()=>{});if('serviceWorker' in navigator){const r=await navigator.serviceWorker.getRegistration();if(r&&r.getNotifications)(await r.getNotifications()).forEach(n=>n.close())}await sb.rpc('mark_seen')}catch(e){}}
+async function afterOpen(){markSeen();if(pushReady()&&Notification.permission==='granted'){try{await savePushSub()}catch(e){console.error(e)}}}
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ---- state ----
@@ -135,7 +143,7 @@ function subscribe(){
   let timer;const again=()=>{clearTimeout(timer);timer=setTimeout(loadData,400)};
   rt=sb.channel('live').on('postgres_changes',{event:'*',schema:'public',table:'transactions'},again)
     .on('postgres_changes',{event:'*',schema:'public',table:'planned_expenses'},again).subscribe();
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadData()});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){loadData();markSeen()}});
 }
 
 // ---- render ----
@@ -177,7 +185,7 @@ function overview(){
       ${all?'':`<div class="bar"><i class="${cls}" style="width:${pct}%"></i></div><div class="sub"><span></span><span class="${diff<0?'neg':''}">${diff<0?$(-diff)+' over':$(diff)+' left'}</span></div>`}</div>`}).join('')+'</div></div>';
   }).join('');
   const unc=by[0]?`<div class="card small" onclick="openCat(0)" style="cursor:pointer">Uncategorized: <b>${$(by[0]/100)}</b> ›</div>`:'';
-  return rv+`<div class="grid4" style="margin-bottom:12px">
+  return rv+notifCard()+`<div class="grid4" style="margin-bottom:12px">
     <div class="stat"><div class="l">Spent</div><div class="v">${$(t.spent)}</div></div>
     <div class="stat"><div class="l">${all?'Transactions':'Budget left'}</div><div class="v ${!all&&t.remain<0?'neg':''}">${all?S.txns.length:$(t.remain)}</div></div>
     <div class="stat"><div class="l">Income</div><div class="v">${$(t.income)}</div></div>
@@ -327,7 +335,7 @@ async function start(session){
   S.session=session;
   if(!session){render();return}
   if(NEEDS_PW&&!window._pwDone){window._pwDone=true;setPassword()}
-  try{await loadMeta();await loadData();subscribe()}catch(e){console.error(e)}
+  try{await loadMeta();await loadData();subscribe();afterOpen()}catch(e){console.error(e)}
 }
 sb.auth.onAuthStateChange((ev,session)=>{
   // defer: supabase calls inside this callback can deadlock
