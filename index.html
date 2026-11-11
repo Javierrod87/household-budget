@@ -284,10 +284,11 @@ async function delTxn(id){if(!await ask('Delete this expense? This can’t be un
 function showReview(){
   sheet(`<h2>Review charges</h2><p class="small muted" style="margin-top:-8px">Confirm or pick the right category. New merchants get remembered.</p>`+
   S.review.map(x=>`<div class="card" style="padding:12px"><div class="top" style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.merchant)}</b><b>${$(x.amount)}</b></div>
-   <div class="small muted">${dayLabel(x.txn_date)}${x.account?' · '+esc(x.account):''}</div>
-   <div style="display:flex;gap:8px;margin-top:8px"><select id="rv_${x.id}" style="flex:1;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px"><option value="">Choose…</option>${catOptions(x.category_id)}</select><button class="btn sm" onclick="confirmReview('${x.id}')">OK</button></div></div>`).join('')+
+   <div class="small muted">${dayLabel(x.txn_date)}${x.account?' · '+esc(x.account):''}</div>${x.notes?`<div class="small" style="color:var(--warn);margin-top:4px">${esc(x.notes)}</div>`:''}
+   <div style="display:flex;gap:8px;margin-top:8px"><select id="rv_${x.id}" style="flex:1;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px"><option value="">Choose…</option>${catOptions(x.category_id)}</select><button class="btn sm" onclick="confirmReview('${x.id}')">OK</button>${x.notes&&/^Possible duplicate/.test(x.notes)?`<button class="btn sm del" onclick="delReview('${x.id}')">Delete</button>`:''}</div></div>`).join('')+
   `<div class="actions"><span></span><button class="btn sec" onclick="closeSheet()">Done</button></div>`);
 }
+async function delReview(id){if(!await ask('Delete this duplicate? This can’t be undone.','Delete')){showReview();return}await q(sb.from('transactions').delete().eq('id',id));await loadData();toast('Deleted');if(S.review.length)showReview()}
 async function confirmReview(id){
   const x=S.review.find(r=>r.id===id),cat=Number(document.getElementById('rv_'+id).value)||null;if(!cat)return toast('Pick a category');
   await q(sb.from('transactions').update({category_id:cat,needs_review:false}).eq('id',id));
